@@ -23,9 +23,7 @@ def calcular_dias_restantes(suprimento: Suprimento, grupo: Grupo) -> float:
     return math.floor(suprimento.quantidade_atual / consumo_total_diario)
 
 
-def suprimento_em_alerta(
-    suprimento: Suprimento, grupo: Grupo, dias_minimos: int = 3
-) -> bool:
+def suprimento_em_alerta(suprimento: Suprimento, grupo: Grupo, dias_minimos: int = 3) -> bool:
     """Retorna True se o suprimento durar menos que `dias_minimos` dias."""
     return calcular_dias_restantes(suprimento, grupo) < dias_minimos
 

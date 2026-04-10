@@ -14,9 +14,7 @@ class Suprimento:
 
     def __post_init__(self) -> None:
         if self.quantidade_atual < 0:
-            raise ValueError(
-                f"Suprimento '{self.nome}': quantidade_atual não pode ser negativa."
-            )
+            raise ValueError(f"Suprimento '{self.nome}': quantidade_atual não pode ser negativa.")
         if self.consumo_diario_padrao < 0:
             raise ValueError(
                 f"Suprimento '{self.nome}': consumo_diario_padrao não pode ser negativo."
@@ -40,9 +38,7 @@ class Pessoa:
             else:
                 self.fator_consumo = 1.0
         elif not (0.0 < self.fator_consumo <= 5.0):
-            raise ValueError(
-                f"Pessoa '{self.nome}': fator_consumo deve estar entre 0 e 5."
-            )
+            raise ValueError(f"Pessoa '{self.nome}': fator_consumo deve estar entre 0 e 5.")
 
 
 @dataclass

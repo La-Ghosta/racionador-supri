@@ -35,7 +35,7 @@ def _carregar_ou_abortar() -> Grupo:
             "Erro: nenhum grupo encontrado. Execute 'racionador init <nome>' primeiro.",
             err=True,
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     return grupo
 
 
@@ -45,9 +45,7 @@ def init(
 ) -> None:
     """Cria um novo grupo e salva em dados.json."""
     if _ARQUIVO_DADOS.exists():
-        confirmar = typer.confirm(
-            f"Arquivo '{_ARQUIVO_DADOS}' já existe. Deseja sobrescrever?"
-        )
+        confirmar = typer.confirm(f"Arquivo '{_ARQUIVO_DADOS}' já existe. Deseja sobrescrever?")
         if not confirmar:
             typer.echo("Operação cancelada.")
             raise typer.Exit(0)
@@ -71,13 +69,13 @@ def add_pessoa(
             f"Use 'remover-pessoa' antes de adicionar novamente.",
             err=True,
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     try:
         pessoa = Pessoa(nome=nome, idade=idade)
     except ValueError as e:
         typer.echo(f"Erro: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     grupo.pessoas.append(pessoa)
     salvar_grupo(grupo, _ARQUIVO_DADOS)
@@ -91,9 +89,7 @@ def add_pessoa(
 def add_suprimento(
     nome: str = typer.Argument(..., help="Nome do suprimento."),
     quantidade: float = typer.Argument(..., help="Quantidade atual disponível."),
-    consumo_diario: float = typer.Argument(
-        ..., help="Consumo diário padrão por adulto."
-    ),
+    consumo_diario: float = typer.Argument(..., help="Consumo diário padrão por adulto."),
     unidade: str = typer.Argument(..., help="Unidade de medida (ex: kg, L, un)."),
 ) -> None:
     """Adiciona um suprimento ao grupo."""
@@ -106,7 +102,7 @@ def add_suprimento(
             f"ou 'remover-suprimento' para excluir.",
             err=True,
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     try:
         suprimento = Suprimento(
@@ -117,7 +113,7 @@ def add_suprimento(
         )
     except ValueError as e:
         typer.echo(f"Erro: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     grupo.suprimentos.append(suprimento)
     salvar_grupo(grupo, _ARQUIVO_DADOS)
@@ -136,7 +132,7 @@ def status() -> None:
         relatorio = relatorio_completo(grupo)
     except ValueError as e:
         typer.echo(f"Erro: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     tabela = Table(
         title=f"Status do grupo: {grupo.nome_grupo}",
@@ -174,20 +170,16 @@ def sugerir(
     """Mostra o percentual de corte necessário para o suprimento durar `dias_alvo` dias."""
     grupo = _carregar_ou_abortar()
 
-    sup = next(
-        (s for s in grupo.suprimentos if s.nome == nome_suprimento), None
-    )
+    sup = next((s for s in grupo.suprimentos if s.nome == nome_suprimento), None)
     if sup is None:
-        typer.echo(
-            f"Erro: suprimento '{nome_suprimento}' não encontrado no grupo.", err=True
-        )
-        raise typer.Exit(1)
+        typer.echo(f"Erro: suprimento '{nome_suprimento}' não encontrado no grupo.", err=True)
+        raise typer.Exit(1) from None
 
     try:
         corte = sugerir_corte(sup, grupo, dias_alvo)
     except ValueError as e:
         typer.echo(f"Erro: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     if corte == 0.0:
         console.print(
@@ -211,7 +203,7 @@ def atualizar_suprimento(
 
     if nova_quantidade < 0:
         typer.echo("Erro: a nova quantidade nao pode ser negativa.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     sup = next(
         (s for s in grupo.suprimentos if s.nome.strip().lower() == nome.strip().lower()),
@@ -219,7 +211,7 @@ def atualizar_suprimento(
     )
     if sup is None:
         typer.echo(f"Erro: suprimento '{nome}' nao encontrado no grupo.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     sup.quantidade_atual = nova_quantidade
     salvar_grupo(grupo, _ARQUIVO_DADOS)
@@ -241,7 +233,7 @@ def remover_pessoa(
     )
     if pessoa is None:
         typer.echo(f"Erro: pessoa '{nome}' nao encontrada no grupo.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     grupo.pessoas.remove(pessoa)
     salvar_grupo(grupo, _ARQUIVO_DADOS)
@@ -261,7 +253,7 @@ def remover_suprimento(
     )
     if sup is None:
         typer.echo(f"Erro: suprimento '{nome}' nao encontrado no grupo.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     grupo.suprimentos.remove(sup)
     salvar_grupo(grupo, _ARQUIVO_DADOS)
