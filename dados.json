@@ -1,0 +1,29 @@
+{
+  "nome_grupo": "Familia Kyiv",
+  "pessoas": [
+    {
+      "nome": "Olena",
+      "idade": 34,
+      "fator_consumo": 1.0
+    },
+    {
+      "nome": "Mykola",
+      "idade": 8,
+      "fator_consumo": 0.6
+    }
+  ],
+  "suprimentos": [
+    {
+      "nome": "Arroz",
+      "quantidade_atual": 5.0,
+      "consumo_diario_padrao": 0.3,
+      "unidade_medida": "kg"
+    },
+    {
+      "nome": "Agua",
+      "quantidade_atual": 20.0,
+      "consumo_diario_padrao": 2.0,
+      "unidade_medida": "L"
+    }
+  ]
+}

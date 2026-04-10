@@ -1,0 +1,228 @@
+"""Interface de linha de comando do racionador de suprimentos."""
+
+import os
+from pathlib import Path
+
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from racionador.modelos import Grupo, Pessoa, Suprimento
+from racionador.persistencia import carregar_grupo, salvar_grupo
+from racionador.racionamento import relatorio_completo, sugerir_corte
+
+app = typer.Typer(
+    name="racionador",
+    help="Racionamento de suprimentos em zonas de conflito humanitário.",
+    no_args_is_help=True,
+)
+console = Console()
+
+_ARQUIVO_DADOS = Path(os.environ.get("RACIONADOR_DADOS", "dados.json"))
+
+_COR_STATUS = {
+    "OK": "green",
+    "ALERTA": "yellow",
+    "CRITICO": "red",
+}
+
+
+def _carregar_ou_abortar() -> Grupo:
+    """Carrega o grupo do arquivo de dados ou encerra com mensagem de erro."""
+    grupo = carregar_grupo(_ARQUIVO_DADOS)
+    if grupo is None:
+        typer.echo(
+            "Erro: nenhum grupo encontrado. Execute 'racionador init <nome>' primeiro.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    return grupo
+
+
+@app.command()
+def init(
+    nome_grupo: str = typer.Argument(..., help="Nome do grupo a ser criado."),
+) -> None:
+    """Cria um novo grupo e salva em dados.json."""
+    if _ARQUIVO_DADOS.exists():
+        confirmar = typer.confirm(
+            f"Arquivo '{_ARQUIVO_DADOS}' já existe. Deseja sobrescrever?"
+        )
+        if not confirmar:
+            typer.echo("Operação cancelada.")
+            raise typer.Exit(0)
+
+    grupo = Grupo(nome_grupo=nome_grupo)
+    salvar_grupo(grupo, _ARQUIVO_DADOS)
+    typer.echo(f"Grupo '{nome_grupo}' criado em '{_ARQUIVO_DADOS}'.")
+
+
+@app.command(name="add-pessoa")
+def add_pessoa(
+    nome: str = typer.Argument(..., help="Nome da pessoa."),
+    idade: int = typer.Argument(..., help="Idade da pessoa em anos."),
+) -> None:
+    """Adiciona uma pessoa ao grupo."""
+    grupo = _carregar_ou_abortar()
+
+    try:
+        pessoa = Pessoa(nome=nome, idade=idade)
+    except ValueError as e:
+        typer.echo(f"Erro: {e}", err=True)
+        raise typer.Exit(1)
+
+    grupo.pessoas.append(pessoa)
+    salvar_grupo(grupo, _ARQUIVO_DADOS)
+    typer.echo(
+        f"Pessoa '{nome}' (idade {idade}, fator {pessoa.fator_consumo:.1f}) "
+        f"adicionada ao grupo '{grupo.nome_grupo}'."
+    )
+
+
+@app.command(name="add-suprimento")
+def add_suprimento(
+    nome: str = typer.Argument(..., help="Nome do suprimento."),
+    quantidade: float = typer.Argument(..., help="Quantidade atual disponível."),
+    consumo_diario: float = typer.Argument(
+        ..., help="Consumo diário padrão por adulto."
+    ),
+    unidade: str = typer.Argument(..., help="Unidade de medida (ex: kg, L, un)."),
+) -> None:
+    """Adiciona um suprimento ao grupo."""
+    grupo = _carregar_ou_abortar()
+
+    try:
+        suprimento = Suprimento(
+            nome=nome,
+            quantidade_atual=quantidade,
+            consumo_diario_padrao=consumo_diario,
+            unidade_medida=unidade,
+        )
+    except ValueError as e:
+        typer.echo(f"Erro: {e}", err=True)
+        raise typer.Exit(1)
+
+    grupo.suprimentos.append(suprimento)
+    salvar_grupo(grupo, _ARQUIVO_DADOS)
+    typer.echo(
+        f"Suprimento '{nome}' ({quantidade} {unidade}, consumo {consumo_diario} {unidade}/dia) "
+        f"adicionado ao grupo '{grupo.nome_grupo}'."
+    )
+
+
+@app.command()
+def status() -> None:
+    """Exibe o relatório completo de suprimentos do grupo."""
+    grupo = _carregar_ou_abortar()
+
+    try:
+        relatorio = relatorio_completo(grupo)
+    except ValueError as e:
+        typer.echo(f"Erro: {e}", err=True)
+        raise typer.Exit(1)
+
+    tabela = Table(
+        title=f"Status do grupo: {grupo.nome_grupo}",
+        show_lines=True,
+    )
+    tabela.add_column("Suprimento", style="bold")
+    tabela.add_column("Quantidade", justify="right")
+    tabela.add_column("Dias restantes", justify="right")
+    tabela.add_column("Status", justify="center")
+    tabela.add_column("Corte sugerido", justify="right")
+
+    for nome_sup, dados in relatorio.items():
+        cor = _COR_STATUS[dados["status"]]
+        dias = dados["dias_restantes"]
+        dias_str = str(dias) if dias != float("inf") else "∞"
+        corte = dados["corte_sugerido_pct"]
+        corte_str = f"{corte:.1f}%" if corte > 0 else "—"
+
+        tabela.add_row(
+            nome_sup,
+            f"{dados['quantidade_atual']} {dados['unidade_medida']}",
+            dias_str,
+            f"[{cor}]{dados['status']}[/{cor}]",
+            corte_str,
+        )
+
+    console.print(tabela)
+
+
+@app.command()
+def sugerir(
+    nome_suprimento: str = typer.Argument(..., help="Nome do suprimento."),
+    dias_alvo: int = typer.Argument(..., help="Número de dias desejados de duração."),
+) -> None:
+    """Mostra o percentual de corte necessário para o suprimento durar `dias_alvo` dias."""
+    grupo = _carregar_ou_abortar()
+
+    sup = next(
+        (s for s in grupo.suprimentos if s.nome == nome_suprimento), None
+    )
+    if sup is None:
+        typer.echo(
+            f"Erro: suprimento '{nome_suprimento}' não encontrado no grupo.", err=True
+        )
+        raise typer.Exit(1)
+
+    try:
+        corte = sugerir_corte(sup, grupo, dias_alvo)
+    except ValueError as e:
+        typer.echo(f"Erro: {e}", err=True)
+        raise typer.Exit(1)
+
+    if corte == 0.0:
+        console.print(
+            f"[green]O suprimento '{nome_suprimento}' já dura {dias_alvo} dias ou mais. "
+            f"Nenhum corte necessário.[/green]"
+        )
+    else:
+        console.print(
+            f"Para '{nome_suprimento}' durar [bold]{dias_alvo} dias[/bold], "
+            f"é necessário reduzir o consumo em [yellow bold]{corte:.1f}%[/yellow bold]."
+        )
+
+
+@app.command()
+def listar() -> None:
+    """Lista as pessoas e suprimentos do grupo."""
+    grupo = _carregar_ou_abortar()
+
+    console.print(f"\n[bold]Grupo:[/bold] {grupo.nome_grupo}\n")
+
+    tabela_pessoas = Table(title="Pessoas", show_lines=True)
+    tabela_pessoas.add_column("Nome")
+    tabela_pessoas.add_column("Idade", justify="right")
+    tabela_pessoas.add_column("Fator de consumo", justify="right")
+
+    for pessoa in grupo.pessoas:
+        tabela_pessoas.add_row(
+            pessoa.nome,
+            str(pessoa.idade),
+            f"{pessoa.fator_consumo:.2f}",
+        )
+
+    if grupo.pessoas:
+        console.print(tabela_pessoas)
+    else:
+        console.print("[dim]Nenhuma pessoa cadastrada.[/dim]")
+
+    tabela_sup = Table(title="Suprimentos", show_lines=True)
+    tabela_sup.add_column("Nome")
+    tabela_sup.add_column("Quantidade atual", justify="right")
+    tabela_sup.add_column("Consumo/dia (adulto)", justify="right")
+    tabela_sup.add_column("Unidade")
+
+    for sup in grupo.suprimentos:
+        tabela_sup.add_row(
+            sup.nome,
+            str(sup.quantidade_atual),
+            str(sup.consumo_diario_padrao),
+            sup.unidade_medida,
+        )
+
+    if grupo.suprimentos:
+        console.print(tabela_sup)
+    else:
+        console.print("[dim]Nenhum suprimento cadastrado.[/dim]")
