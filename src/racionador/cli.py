@@ -65,6 +65,14 @@ def add_pessoa(
     """Adiciona uma pessoa ao grupo."""
     grupo = _carregar_ou_abortar()
 
+    if any(p.nome.strip().lower() == nome.strip().lower() for p in grupo.pessoas):
+        typer.echo(
+            f"Erro: ja existe uma pessoa chamada '{nome}' no grupo. "
+            f"Use 'remover-pessoa' antes de adicionar novamente.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
     try:
         pessoa = Pessoa(nome=nome, idade=idade)
     except ValueError as e:
@@ -90,6 +98,15 @@ def add_suprimento(
 ) -> None:
     """Adiciona um suprimento ao grupo."""
     grupo = _carregar_ou_abortar()
+
+    if any(s.nome.strip().lower() == nome.strip().lower() for s in grupo.suprimentos):
+        typer.echo(
+            f"Erro: ja existe um suprimento chamado '{nome}'. "
+            f"Use 'atualizar-suprimento' para modificar a quantidade "
+            f"ou 'remover-suprimento' para excluir.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
     try:
         suprimento = Suprimento(
@@ -182,6 +199,73 @@ def sugerir(
             f"Para '{nome_suprimento}' durar [bold]{dias_alvo} dias[/bold], "
             f"é necessário reduzir o consumo em [yellow bold]{corte:.1f}%[/yellow bold]."
         )
+
+
+@app.command(name="atualizar-suprimento")
+def atualizar_suprimento(
+    nome: str = typer.Argument(..., help="Nome do suprimento a atualizar."),
+    nova_quantidade: float = typer.Argument(..., help="Nova quantidade disponivel."),
+) -> None:
+    """Atualiza a quantidade atual de um suprimento existente."""
+    grupo = _carregar_ou_abortar()
+
+    if nova_quantidade < 0:
+        typer.echo("Erro: a nova quantidade nao pode ser negativa.", err=True)
+        raise typer.Exit(1)
+
+    sup = next(
+        (s for s in grupo.suprimentos if s.nome.strip().lower() == nome.strip().lower()),
+        None,
+    )
+    if sup is None:
+        typer.echo(f"Erro: suprimento '{nome}' nao encontrado no grupo.", err=True)
+        raise typer.Exit(1)
+
+    sup.quantidade_atual = nova_quantidade
+    salvar_grupo(grupo, _ARQUIVO_DADOS)
+    typer.echo(
+        f"Suprimento '{sup.nome}' atualizado: nova quantidade = {nova_quantidade} {sup.unidade_medida}"
+    )
+
+
+@app.command(name="remover-pessoa")
+def remover_pessoa(
+    nome: str = typer.Argument(..., help="Nome da pessoa a remover."),
+) -> None:
+    """Remove uma pessoa do grupo pelo nome."""
+    grupo = _carregar_ou_abortar()
+
+    pessoa = next(
+        (p for p in grupo.pessoas if p.nome.strip().lower() == nome.strip().lower()),
+        None,
+    )
+    if pessoa is None:
+        typer.echo(f"Erro: pessoa '{nome}' nao encontrada no grupo.", err=True)
+        raise typer.Exit(1)
+
+    grupo.pessoas.remove(pessoa)
+    salvar_grupo(grupo, _ARQUIVO_DADOS)
+    typer.echo(f"Pessoa '{pessoa.nome}' removida do grupo '{grupo.nome_grupo}'.")
+
+
+@app.command(name="remover-suprimento")
+def remover_suprimento(
+    nome: str = typer.Argument(..., help="Nome do suprimento a remover."),
+) -> None:
+    """Remove um suprimento do grupo pelo nome."""
+    grupo = _carregar_ou_abortar()
+
+    sup = next(
+        (s for s in grupo.suprimentos if s.nome.strip().lower() == nome.strip().lower()),
+        None,
+    )
+    if sup is None:
+        typer.echo(f"Erro: suprimento '{nome}' nao encontrado no grupo.", err=True)
+        raise typer.Exit(1)
+
+    grupo.suprimentos.remove(sup)
+    salvar_grupo(grupo, _ARQUIVO_DADOS)
+    typer.echo(f"Suprimento '{sup.nome}' removido do grupo '{grupo.nome_grupo}'.")
 
 
 @app.command()
