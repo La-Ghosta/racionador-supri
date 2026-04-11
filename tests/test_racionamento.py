@@ -135,3 +135,13 @@ def test_relatorio_completo_classifica_status_corretamente():
     assert relatorio["Critico"]["status"] == "CRITICO"
     assert relatorio["Alerta"]["status"] == "ALERTA"
     assert relatorio["Ok"]["status"] == "OK"
+
+def test_relatorio_completo_grupo_sem_suprimentos_lanca_value_error():
+    """Garante que gerar relatorio de grupo sem suprimentos lanca erro."""
+    grupo = Grupo(
+        nome_grupo="Grupo Teste",
+        pessoas=[Pessoa(nome="Ana", idade=30)],
+        suprimentos=[],
+    )
+    with pytest.raises(ValueError):
+        relatorio_completo(grupo)
