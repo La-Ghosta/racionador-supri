@@ -292,7 +292,6 @@ racionador-supri/
 **Guilherme Holanda**
 
 - GitHub: [@La-Ghosta](https://github.com/La-Ghosta)
-- Repositório: https://github.com/La-Ghosta/racionador-supri
 
 ---
 
