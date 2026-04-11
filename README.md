@@ -85,7 +85,7 @@ Tudo é salvo localmente em um arquivo `dados.json`, sem precisar de internet ou
 
 ### Pré-requisitos
 
-- **Python 3.10 ou superior** instalado[](https://www.python.org/downloads/)
+- **Python 3.10 ou superior** instalado ([download oficial](https://www.python.org/downloads/))
 - **Git** instalado
 
 ### Passo 1 - Clonar o repositório
