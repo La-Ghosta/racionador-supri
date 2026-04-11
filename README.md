@@ -43,7 +43,7 @@ O **Racionador-Supri** é uma CLI simples que permite:
 - atualizar quantidades quando chegar ajuda humanitária;
 - remover pessoas ou suprimentos do grupo.
 
-Tudo é salvo localmente em um arquivo `dados.json`, sem precisar de internet ou banco de dados.
+Tudo é salvo localmente em um arquivo `dados.json`, sem precisar de internet ou banco de dados. Ou seja, o Racionador-Supri foi pensado exatamente para esse cenário: uma ferramenta que funciona **sem internet, sem custo extra e sem depender de infraestrutura** que pode ser destruída.
 
 ---
 
